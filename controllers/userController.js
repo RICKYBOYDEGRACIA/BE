@@ -62,7 +62,7 @@ const updateUser = async(req, res, next) => {
             req.params.id,
             req.body,
             {
-                new: true, runValidators: true
+                returnDocument: true, runValidators: true
             }
         );
         if(!data){
