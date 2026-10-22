@@ -50,7 +50,7 @@ const createUser = async(req, res, next) => {
             data
         })
     }catch(err){
-        
+
         next(err);
     }
 }
