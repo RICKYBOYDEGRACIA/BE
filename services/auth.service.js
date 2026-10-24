@@ -1,10 +1,10 @@
 const UserModel = require('../models/User');
-const AuthModel = require('../models/Auth'); // Import your new auth model
+const AuthModel = require('../models/Auth');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const registerUser = async (userData) => {
-    const { email, password, firstName, middleName, lastName, age, location } = userData;
+    const { email, password, firstName, middleName, lastName, age, location, role} = userData;
 
     // 1. Check if auth (email) already exists
     const existingAuth = await AuthModel.findOne({ email });
@@ -20,7 +20,8 @@ const registerUser = async (userData) => {
         middleName,
         lastName,
         age,
-        location
+        location,
+        role,
     });
 
     // 3. Hash the password securely
@@ -40,17 +41,18 @@ const registerUser = async (userData) => {
     };
 };
 
-const loginUser = async (credentials) => {
-    const { email, password } = credentials;
+const loginUser = async (userData) => {
+    const { email, password } = userData;
 
-    // Look up credentials in the Auth collection
-    const authRecord = await AuthModel.findOne({ email });
+    // 1. Find auth record and populate the associated user profile to check the role
+    const authRecord = await AuthModel.findOne({ email }).populate('userId');
     if (!authRecord) {
         const error = new Error('Invalid email or password');
         error.statusCode = 401;
         throw error;
     }
 
+    // 2. Verify password
     const isMatch = await bcrypt.compare(password, authRecord.password);
     if (!isMatch) {
         const error = new Error('Invalid email or password');
@@ -58,15 +60,26 @@ const loginUser = async (credentials) => {
         throw error;
     }
 
+    // 3. Extract role safely from the populated user profile
+    const userRole = authRecord.userId ? authRecord.userId.role : 'user';
+
+    // 4. Block login if role is not admin
+    if (userRole !== 'admin') {
+        const error = new Error('Access forbidden: Only Administrator can log in here.');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    // 5. Generate token
     const token = jwt.sign(
-        { id: authRecord.userId, email: authRecord.email },
+        { id: authRecord.userId._id, email: authRecord.email, role: userRole },
         process.env.JWT_SECRET || 'fallback_secret_key',
         { expiresIn: '1d' }
     );
 
-    return {
-        message: "Login successful",
-        token: token
+    return { 
+        message: "Login successful", 
+        token 
     };
 };
 
