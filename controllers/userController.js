@@ -2,16 +2,31 @@ const UserModel = require('../models/User');
 
 //Get: This will get all user in db
 const getAllUsers = async(req, res, next) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = { role: { $ne: 'admin' } };
+
     try{
-        const data = await UserModel.find().sort({createdAt: -1})
-        if(data.length <= 0){
+        const items = await UserModel.find(filter)
+        .sort({createdAt: -1})
+        .skip(skip)
+        .limit(limit);
+
+        const total = await UserModel.countDocuments(filter);
+        
+        if(items.length <= 0 && page === 1){
             return res.status(404).json({
                 message: "No data found"
             })
         }
         return res.status(200).json({
             message: "Successfully retrieved data",
-            data
+            data: items,
+            limit,
+            total,
+            pages: Math.ceil(total / limit)
         })
     }catch(err){
         next(err);
@@ -40,6 +55,7 @@ const getUserById = async(req, res, next) => {
 const createUser = async(req, res, next) => {
     try{
         const data = await UserModel.create(req.body);
+        console.log(data)
         if(!data){
             return res.status(400).json({
                 message: "Please fill all required fields"
