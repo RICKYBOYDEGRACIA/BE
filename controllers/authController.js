@@ -14,7 +14,8 @@ const login = async (req, res, next) => {
         const result = await authService.loginUser(req.body);
         return res.status(200).json(result);
     } catch (err) {
-        next(err); // Passes error to your global error-handling middleware
+        const statusCode = err.statusCode || 500;
+        return res.status(statusCode).json({ message: err.message });
     }
 };
 
