@@ -1,12 +1,17 @@
 const UserModel = require('../models/User');
+const AuthModel = require('../models/Auth');
 
 //Get: This will get all user in db
 const getAllUsers = async(req, res, next) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
 
-    const filter = { role: { $ne: 'admin' } };
+    const filter = {};
+
+    if(req.query.role){
+        filter.role = req.query.role
+    }
 
     try{
         const items = await UserModel.find(filter)
@@ -55,7 +60,6 @@ const getUserById = async(req, res, next) => {
 const createUser = async(req, res, next) => {
     try{
         const data = await UserModel.create(req.body);
-        console.log(data)
         if(!data){
             return res.status(400).json({
                 message: "Please fill all required fields"
@@ -99,8 +103,11 @@ const updateUser = async(req, res, next) => {
 //Delete: This will delete user by id
 const deleteUser = async(req, res, next) => {
     try{
-        const data = await UserModel.findByIdAndDelete(req.params.id);
-        if(!data){
+        const userId = req.params.id;
+        const userData = await UserModel.findByIdAndDelete(req.params.id);
+        const authData = await AuthModel.findOneAndDelete({userId: userId});
+        console.log({userId: userId})
+        if(!userData && !authData){
             return res.status(404).json({
                 message: "User not found"
             })
@@ -120,5 +127,5 @@ module.exports = {
     getUserById,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
 }
